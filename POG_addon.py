@@ -6,6 +6,7 @@ the Free Software Foundation, either version 3 of the License, or
 '''
 import bpy
 
+
 bl_info = {
     "name": "POG",
     "author": "Radovan Stastny <radovan.stastny2004@gmail.com>",
@@ -27,11 +28,16 @@ class VIEW3D_PT_POG(bpy.types.Panel):
     bl_category = "POG"
     bl_label = "POG"
     def draw(self, context):
-        col = self.layout.column(align=True)
+
+        col = self.layout.column(align=True,)
+        col.label(text="Origin:")
+        col.scale_y = 1.25
         col.operator('mesh.set_origin_to_selection',icon='OBJECT_ORIGIN')
-        col = self.layout.column(align=True)
-        col.operator('mesh.add_tracked_lamp_plane',text="Add tracked lamp plane to active obj", icon='MESH_PLANE')
-        col.operator('mesh.add_tracked_lamp', text="Add tracked lamp to active obj", icon='CON_TRACKTO')
+        col = self.layout.column(align=True, )
+        col.label(text="Add lamp:")
+        col.scale_y = 1.25
+        col.operator('mesh.add_tracked_lamp_plane',text="Add tracked plane lamp", icon='LIGHT')
+        col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
 
 
 # ASSIGN ORIGIN FUNCTION
@@ -39,8 +45,16 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
     """assign origin to selection"""
     bl_idname = 'mesh.set_origin_to_selection'
     bl_label = "Set Origin to selection"
+    bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED',}
 
-    # Checking if is possible to perform operator
+    #properties declaration
+    #move_3d_cursor: bpy.props.BoolProperty(
+    #    name="move 3d curosor",
+    #    description = "move 3d curosor to origin",
+    #    default = False,
+    #)
+
+    # Checking if it is possible to perform operator
     @classmethod
     def poll(cls, context):
         objs = context.selected_objects
@@ -50,22 +64,22 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
         else: return False
 
 
-
     def execute(self,context):
         # Get cursor location
-        cursor_location = bpy.context.scene.cursor.location.copy()
+        original_cursor_location = bpy.context.scene.cursor.location.copy()
         # Set origin
         bpy.ops.view3d.snap_cursor_to_selected()
         bpy.ops.object.mode_set(mode='OBJECT')
+        #tohle je nějaké pohlupave
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
         bpy.ops.object.mode_set(mode='EDIT')
-        # Set origin back to last position
-        bpy.context.scene.cursor.location = cursor_location
+        # Set 3D cursor back to last position
+        bpy.context.scene.cursor.location = original_cursor_location
         return {'FINISHED'}
 
 # ADD TRACKED LAMP PLANE FUNCTION
 class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
-    """add lamp with track to constraint to scene"""
+    """Add lamp with track to constraint to active object"""
     bl_idname = 'mesh.add_tracked_lamp_plane'
     bl_label = "Add tracked plane lamp"
     bl_options = {'REGISTER', 'UNDO'}
@@ -104,7 +118,7 @@ class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
         max=1,
     )
 
-    # Checking if is possible to perform operator
+    # Checking if it is possible to perform operator
     @classmethod
     def poll(cls, context):
         objs = context.selected_objects
@@ -161,7 +175,7 @@ class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
 
 # ADD TRACKED LAMP FUNCTION
 class MESH_OT_add_tracked_lamp(bpy.types.Operator):
-    """add lamp with track to constraint to scene"""
+    """Add plane lamp with track to constraint to active object"""
     bl_idname = 'mesh.add_tracked_lamp'
     bl_label = "Add tracked lamp"
     bl_options = {'REGISTER', 'UNDO'}
@@ -202,7 +216,7 @@ class MESH_OT_add_tracked_lamp(bpy.types.Operator):
         max=1,
     )
 
-    # Checking if is possible to perform operator
+    # Checking if it is possible to perform operator
     @classmethod
     def poll(cls, context):
         objs = context.selected_objects
@@ -242,7 +256,7 @@ def menu_func_origin(self, context):
 
 # Adds add lamp plane function to F3 search
 def menu_func_lamp_plane(self, context):
-    self.layout.operator(MESH_OT_add_tracked_lamp_plane.bl_idname, icon='MESH_PLANE')
+    self.layout.operator(MESH_OT_add_tracked_lamp_plane.bl_idname, icon='LIGHT')
 
 # Adds add lamp function to F3 search
 def menu_func_lamp(self, context):
@@ -258,6 +272,7 @@ def register():
     bpy.types.VIEW3D_MT_edit_mesh.append(menu_func_origin)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp)
+    print("zdar")
 
 def unregister():
     bpy.utils.unregister_class(MESH_OT_set_origin_selection)
@@ -268,6 +283,4 @@ def unregister():
     bpy.types.VIEW3D_MT_edit_mesh.remove(menu_func_origin)
     bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp)
-
-
-
+    print("naschle")

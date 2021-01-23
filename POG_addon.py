@@ -12,7 +12,8 @@ bl_info = {
     "author": "Radovan Stastny <radovan.stastny2004@gmail.com>",
     "version": (1, 3),
     "blender": (2, 85, 0),
-    "category": "General",
+    "category": "3D View",
+    "doc_url":"https://docs.google.com/document/d/17DsHfqIfumDWSyVnHD1hiJe9GBZ9yfkCH4roNI1Zo4o/edit",
     "location": "View3D > Side Pannel > POG",
     "description": "This addon will help you with your POG expirience",
 }

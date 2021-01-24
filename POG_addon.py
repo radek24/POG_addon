@@ -35,10 +35,19 @@ class VIEW3D_PT_POG(bpy.types.Panel):
         col.scale_y = 1.25
         col.operator('mesh.set_origin_to_selection',icon='OBJECT_ORIGIN')
         col = self.layout.column(align=True, )
-        col.label(text="Add lamp:")
+        col.label(text="Add lamp to active object:",icon='PIVOT_ACTIVE')
         col.scale_y = 1.25
-        col.operator('mesh.add_tracked_lamp_plane',text="Add tracked plane lamp", icon='LIGHT')
-        col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
+        props = col.operator('mesh.add_tracked_lamp_plane',text="Add tracked plane lamp", icon='LIGHT')
+        props.tracked_to_empty = False
+        props = col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
+        props.tracked_to_empty=False
+        col = self.layout.column(align=True, )
+        col.label(text="Add lamp to empty:",icon='EMPTY_AXIS')
+        col.scale_y = 1.25
+        props = col.operator('mesh.add_tracked_lamp_plane', text="Add tracked plane lamp", icon='LIGHT')
+        props.tracked_to_empty = True
+        props = col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
+        props.tracked_to_empty=True
 
 
 # ASSIGN ORIGIN FUNCTION
@@ -119,6 +128,19 @@ class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
         max=1,
     )
 
+    tracked_to_empty: bpy.props.BoolProperty(
+        name="Track to emtpy",
+        description="will track to empty instead of active object",
+        default=False,
+    )
+
+    empty_lamp_position: bpy.props.FloatVectorProperty(
+        name="empty position",
+        description="position of tracked object",
+        default=(0, 0, 0),
+        subtype='TRANSLATION',
+    )
+
     # Checking if it is possible to perform operator
     @classmethod
     def poll(cls, context):
@@ -166,9 +188,13 @@ class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
         # constraint properties
         constraint.show_expanded = True
         constraint.mute = False
-        constraint.target = tracked_obj
         constraint.track_axis = 'TRACK_Z'
-
+        if self.tracked_to_empty == True:
+            bpy.ops.object.empty_add(type='PLAIN_AXES', location=self.empty_lamp_position)
+            constraint.target = bpy.context.active_object
+            bpy.context.active_object.name = 'POG_lamp.target'
+        else:
+            constraint.target = tracked_obj
         return {'FINISHED'}
 
 
@@ -182,6 +208,7 @@ class MESH_OT_add_tracked_lamp(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     # Properties declaration
+
     light_intensity_lamp: bpy.props.FloatProperty(
         name="Light intensity",
         description="intensity of created lamp",
@@ -217,6 +244,18 @@ class MESH_OT_add_tracked_lamp(bpy.types.Operator):
         max=1,
     )
 
+    tracked_to_empty: bpy.props.BoolProperty(
+        name="Track to emtpy",
+        description="will track to empty instead of active object",
+        default=False,
+    )
+
+    empty_lamp_position: bpy.props.FloatVectorProperty(
+        name="empty position",
+        description="position of tracked object",
+        default=(0, 0, 0),
+        subtype='TRANSLATION',
+    )
     # Checking if it is possible to perform operator
     @classmethod
     def poll(cls, context):
@@ -242,13 +281,15 @@ class MESH_OT_add_tracked_lamp(bpy.types.Operator):
         # constraint properties
         constraint.show_expanded = True
         constraint.mute = False
-        constraint.target = tracked_obj
         constraint.track_axis = 'TRACK_NEGATIVE_Z'
-
+        # deciding tracking target
+        if self.tracked_to_empty == True:
+            bpy.ops.object.empty_add(type='PLAIN_AXES', location=self.empty_lamp_position)
+            constraint.target = bpy.context.active_object
+            bpy.context.active_object.name = 'POG_lamp.target'
+        else:
+            constraint.target = tracked_obj
         return {'FINISHED'}
-
-
-
 
 
 # Adds origin function to F3 search
@@ -273,7 +314,7 @@ def register():
     bpy.types.VIEW3D_MT_edit_mesh.append(menu_func_origin)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp)
-    print("zdar")
+    print("I1C jsou borci")
 
 def unregister():
     bpy.utils.unregister_class(MESH_OT_set_origin_selection)

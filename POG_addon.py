@@ -19,6 +19,7 @@ bl_info = {
 }
 
 # UI
+#----------------------------------------------------------------------------------------------------------------------------------------------------#
 def menu_func(self, context):
     self.layout.operator(mesh.set_origin_to_selection)
     self.layout.operator(mesh.add_tracked_lamp_plane)
@@ -50,6 +51,8 @@ class VIEW3D_PT_POG(bpy.types.Panel):
         props.tracked_to_empty=True
 
 
+#Operators
+#----------------------------------------------------------------------------------------------------------------------------------------------------#
 # ASSIGN ORIGIN FUNCTION
 class MESH_OT_set_origin_selection(bpy.types.Operator):
     """assign origin to selection"""
@@ -57,12 +60,7 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
     bl_label = "Set Origin to selection"
     bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED',}
 
-    #properties declaration
-    #move_3d_cursor: bpy.props.BoolProperty(
-    #    name="move 3d curosor",
-    #    description = "move 3d curosor to origin",
-    #    default = False,
-    #)
+
 
     # Checking if it is possible to perform operator
     @classmethod
@@ -80,14 +78,18 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
         # Set origin
         bpy.ops.view3d.snap_cursor_to_selected()
         bpy.ops.object.mode_set(mode='OBJECT')
+
         #tohle je nějaké pohlupave
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+        # tohle je nějaké pohlupave
+
         bpy.ops.object.mode_set(mode='EDIT')
         # Set 3D cursor back to last position
         bpy.context.scene.cursor.location = original_cursor_location
         return {'FINISHED'}
 
-# ADD TRACKED LAMP PLANE FUNCTION
+# ADD TRACKED LAMP PLANE OPERATOR
+#----------------------------------------------------------------------------------------------------------------------------------------------------#
 class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
     """Add lamp with track to constraint to active object"""
     bl_idname = 'mesh.add_tracked_lamp_plane'
@@ -185,14 +187,21 @@ class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
         o = bpy.context.object
         constraint = o.constraints.new('TRACK_TO')
 
-        # constraint properties
+        # Constraint properties
         constraint.show_expanded = True
         constraint.mute = False
         constraint.track_axis = 'TRACK_Z'
+        constraint.name ='POG constraint'
+        # Get lamp 
+        ob = bpy.context.active_object
+
+        #deciding tracking target
         if self.tracked_to_empty == True:
             bpy.ops.object.empty_add(type='PLAIN_AXES', location=self.empty_lamp_position)
             constraint.target = bpy.context.active_object
             bpy.context.active_object.name = 'POG_lamp.target'
+            bpy.context.active_object.select_set(False)
+            ob.select_set(True)
         else:
             constraint.target = tracked_obj
         return {'FINISHED'}
@@ -200,7 +209,8 @@ class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
 
 
 
-# ADD TRACKED LAMP FUNCTION
+# ADD TRACKED LAMP OPERATOR
+#----------------------------------------------------------------------------------------------------------------------------------------------------#
 class MESH_OT_add_tracked_lamp(bpy.types.Operator):
     """Add plane lamp with track to constraint to active object"""
     bl_idname = 'mesh.add_tracked_lamp'
@@ -270,9 +280,11 @@ class MESH_OT_add_tracked_lamp(bpy.types.Operator):
         # light creation
         tracked_obj = bpy.context.active_object
         bpy.ops.object.light_add(type='AREA', radius=self.scale_lamp, location=self.position_lamp,)
-        bpy.context.active_object.name = 'POG_lamp'
+        bpy.context.active_object.name = 'POG.lamp'
         bpy.context.object.data.energy = self.light_intensity_lamp
         bpy.context.object.data.color = self.color_lamp
+        ob = bpy.context.active_object
+        print(ob)
 
         # Constraint creation
         o = bpy.context.object
@@ -282,16 +294,49 @@ class MESH_OT_add_tracked_lamp(bpy.types.Operator):
         constraint.show_expanded = True
         constraint.mute = False
         constraint.track_axis = 'TRACK_NEGATIVE_Z'
+        constraint.name ='POG constraint'
+
         # deciding tracking target
         if self.tracked_to_empty == True:
             bpy.ops.object.empty_add(type='PLAIN_AXES', location=self.empty_lamp_position)
             constraint.target = bpy.context.active_object
-            bpy.context.active_object.name = 'POG_lamp.target'
+            bpy.context.active_object.select_set(False)
+            ob.select_set(True)
+
         else:
             constraint.target = tracked_obj
         return {'FINISHED'}
 
+#----------------------------------------------------------------------------------------------------------------------------------------------------#
+# BAKING OPERATOR
+"""class MESH_OT_autobaking(bpy.types.Operator):
+    *will bake everything automatically*
+    bl_idname = 'mesh.autobaking'
+    bl_label = "Autobake"
+    bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED',}
 
+
+
+    # Checking if it is possible to perform operator
+    @classmethod
+    def poll(cls, context):
+        return True
+
+
+    def execute(self,context):
+        # Define link
+        link = material_light.node_tree.links.new
+        #UV map creation and unwrap
+        bpy.ops.mesh.uv_texture_add()
+        bpy.context.object.data.uv_layers[1].name = "Bake"
+        #bpy.context.object.data.uv_layers["UVMap.001"].active_render = True
+        # Material creation
+
+
+        return {'FINISHED'}"""
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------#
 # Adds origin function to F3 search
 def menu_func_origin(self, context):
     self.layout.operator(MESH_OT_set_origin_selection.bl_idname, icon='OBJECT_ORIGIN')
@@ -304,6 +349,7 @@ def menu_func_lamp_plane(self, context):
 def menu_func_lamp(self, context):
     self.layout.operator(MESH_OT_add_tracked_lamp.bl_idname, icon='CON_TRACKTO')
 
+#----------------------------------------------------------------------------------------------------------------------------------------------------#
 # Registration
 def register():
     bpy.utils.register_class(MESH_OT_set_origin_selection)

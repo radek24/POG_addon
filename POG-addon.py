@@ -69,7 +69,7 @@ class VIEW3D_PT_POG(bpy.types.Panel):
 
         props = col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
         props.tracked_to_empty = True
-
+        ahoj
 
 # Operators
 # -----------------------------------------------------------------------------------------------------------------------#

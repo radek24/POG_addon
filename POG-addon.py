@@ -112,31 +112,28 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
 # -----------------------------------------------------------------------------------------------------------------------#
 
 def increase_vertex_paint_hue(x):
+
+
     # Get the active object (must be in vertex paint mode)
     obj = bpy.context.active_object
 
     if obj is not None and obj.type == 'MESH' and obj.mode == 'VERTEX_PAINT':
         brush = bpy.data.brushes["Draw"]
         
-        # Get the current color from the brush
+
+
         existing_color = brush.color
-        
-        # Convert the color from sRGB to linear
+        if existing_color[0] == existing_color[1] and existing_color[1] == existing_color[2] and existing_color[0] == existing_color[2]:
+             brush.color = [1.0,0.0,0.0]
+             return
         existing_color = [c / 255.0 for c in existing_color]
-        
-        # Convert the color from RGB to HSV
         hsv = colorsys.rgb_to_hsv(existing_color[0], existing_color[1], existing_color[2])
-        
-        # Increase the hue value by 'x'
         new_hue = (hsv[0] + x) % 1.0
         
-        # Convert the HSV color back to RGB
         new_rgb = colorsys.hsv_to_rgb(new_hue, hsv[1], hsv[2])
         
-        # Set the new color in linear RGB space
         new_color = [c * 255.0 for c in new_rgb]
         
-        # Update the brush color
         brush.color = new_color
 
 
@@ -470,5 +467,5 @@ def unregister():
     bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp)
     bpy.types.VIEW3D_MT_paint_vertex.remove(menu_func_vertex)
     bpy.types.VIEW3D_MT_paint_vertex.remove(menu_func_vertex_dec)
-    
+
     print("naschle")

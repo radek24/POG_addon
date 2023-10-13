@@ -18,6 +18,8 @@
 
 
 import bpy
+import colorsys
+
 
 bl_info = {
     "name": "POG",
@@ -106,6 +108,77 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
         bpy.context.scene.cursor.location = original_cursor_location
         return {'FINISHED'}
 
+# INCREMENT HUE VERTEX COLOR
+# -----------------------------------------------------------------------------------------------------------------------#
+
+def increase_vertex_paint_hue(x):
+    # Get the active object (must be in vertex paint mode)
+    obj = bpy.context.active_object
+
+    if obj is not None and obj.type == 'MESH' and obj.mode == 'VERTEX_PAINT':
+        brush = bpy.data.brushes["Draw"]
+        
+        # Get the current color from the brush
+        existing_color = brush.color
+        
+        # Convert the color from sRGB to linear
+        existing_color = [c / 255.0 for c in existing_color]
+        
+        # Convert the color from RGB to HSV
+        hsv = colorsys.rgb_to_hsv(existing_color[0], existing_color[1], existing_color[2])
+        
+        # Increase the hue value by 'x'
+        new_hue = (hsv[0] + x) % 1.0
+        
+        # Convert the HSV color back to RGB
+        new_rgb = colorsys.hsv_to_rgb(new_hue, hsv[1], hsv[2])
+        
+        # Set the new color in linear RGB space
+        new_color = [c * 255.0 for c in new_rgb]
+        
+        # Update the brush color
+        brush.color = new_color
+
+
+
+class MESH_OT_increment_vertex_color_hue(bpy.types.Operator):
+    """increment hue of vertex color"""
+    bl_idname = 'mesh.increment_vertex_color_hue'
+    bl_label = "Increment vertex color hue"
+    bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED', }
+
+    @classmethod
+    def poll(cls, context):
+        objs = context.selected_objects
+        if len(objs) != 0:
+            current_mode = bpy.context.object.mode
+            return context.area.type == 'VIEW_3D' and current_mode == 'VERTEX_PAINT'
+        else:
+            return False
+
+    def execute(self, context):
+        increase_vertex_paint_hue(0.05)
+        return {'FINISHED'}
+
+
+class MESH_OT_decrement_vertex_color_hue(bpy.types.Operator):
+    """Decrement hue of vertex color"""
+    bl_idname = 'mesh.decrement_vertex_color_hue'
+    bl_label = "Decrement vertex color hue"
+    bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED', }
+
+    @classmethod
+    def poll(cls, context):
+        objs = context.selected_objects
+        if len(objs) != 0:
+            current_mode = bpy.context.object.mode
+            return context.area.type == 'VIEW_3D' and current_mode == 'VERTEX_PAINT'
+        else:
+            return False
+
+    def execute(self, context):
+        increase_vertex_paint_hue(-0.05)
+        return {'FINISHED'}
 
 # ADD TRACKED LAMP PLANE OPERATOR
 # -----------------------------------------------------------------------------------------------------------------------#
@@ -349,6 +422,11 @@ def menu_func_lamp_plane(self, context):
 def menu_func_lamp(self, context):
     self.layout.operator(MESH_OT_add_tracked_lamp.bl_idname, icon='CON_TRACKTO')
 
+def menu_func_vertex(self, context):
+    self.layout.operator(MESH_OT_increment_vertex_color_hue.bl_idname, icon='TRIA_UP')
+
+def menu_func_vertex_dec(self, context):
+    self.layout.operator(MESH_OT_decrement_vertex_color_hue.bl_idname, icon='TRIA_DOWN')
 
 # --------------------------------------------------------------------------------------------------------------------#
 # Registration
@@ -362,13 +440,18 @@ def register():
     bpy.utils.register_class(MESH_OT_set_origin_selection)
     bpy.utils.register_class(MESH_OT_add_tracked_lamp_plane)
     bpy.utils.register_class(MESH_OT_add_tracked_lamp)
+    bpy.utils.register_class(MESH_OT_increment_vertex_color_hue)
+    bpy.utils.register_class(MESH_OT_decrement_vertex_color_hue)
 
     # F3 menu
     bpy.types.VIEW3D_MT_edit_mesh.append(menu_func_origin)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp)
+    bpy.types.VIEW3D_MT_paint_vertex.append(menu_func_vertex)
+    bpy.types.VIEW3D_MT_paint_vertex.append(menu_func_vertex_dec)
 
-    print("I1C jsou borci")
+
+    print("I4C jsou borci")
 
 
 def unregister():
@@ -379,9 +462,13 @@ def unregister():
     bpy.utils.unregister_class(MESH_OT_set_origin_selection)
     bpy.utils.unregister_class(MESH_OT_add_tracked_lamp_plane)
     bpy.utils.unregister_class(MESH_OT_add_tracked_lamp)
-
+    bpy.utils.unregister_class(MESH_OT_increment_vertex_color_hue)
+    bpy.utils.unregister_class(MESH_OT_decrement_vertex_color_hue)
     # F3 menu
     bpy.types.VIEW3D_MT_edit_mesh.remove(menu_func_origin)
     bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp)
+    bpy.types.VIEW3D_MT_paint_vertex.remove(menu_func_vertex)
+    bpy.types.VIEW3D_MT_paint_vertex.remove(menu_func_vertex_dec)
+    
     print("naschle")

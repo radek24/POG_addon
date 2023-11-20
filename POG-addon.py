@@ -113,7 +113,6 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
 
 def increase_vertex_paint_hue(x):
 
-
     # Get the active object (must be in vertex paint mode)
     obj = bpy.context.active_object
 
@@ -158,6 +157,10 @@ class MESH_OT_increment_vertex_color_hue(bpy.types.Operator):
         return {'FINISHED'}
 
 
+
+
+
+
 class MESH_OT_decrement_vertex_color_hue(bpy.types.Operator):
     """Decrement hue of vertex color"""
     bl_idname = 'mesh.decrement_vertex_color_hue'
@@ -177,125 +180,60 @@ class MESH_OT_decrement_vertex_color_hue(bpy.types.Operator):
         increase_vertex_paint_hue(-0.05)
         return {'FINISHED'}
 
-# ADD TRACKED LAMP PLANE OPERATOR
+
+
+# ADD CHECKER MATERIAL
 # -----------------------------------------------------------------------------------------------------------------------#
-
-
-class MESH_OT_add_tracked_lamp_plane(bpy.types.Operator):
-    """Add lamp with track to constraint to active object"""
-    bl_idname = 'mesh.add_tracked_lamp_plane'
-    bl_label = "Add tracked plane lamp"
+class OBJECT_OT_add_checker_material(bpy.types.Operator):
+    bl_idname = "object.add_checker_material"
+    bl_label = "Add Checker Material"
     bl_options = {'REGISTER', 'UNDO'}
 
-    # Properties declaration
-    light_intensity: bpy.props.FloatProperty(
-        name="Light intensity",
-        description="intensity of created lamp",
-        default=2,
-        min=0, soft_max=100,
-    )
-
     scale: bpy.props.FloatProperty(
-        name="Lamp scale",
-        description="uniform scale of lamp",
-        default=2.0,
-        min=0,
-        max=100,
-        unit='LENGTH',
+        name="Texture Scale",
+        default=256.0,
+        min=0.1,
+        description="Scale of the checker texture",
     )
-
-    position: bpy.props.FloatVectorProperty(
-        name="Lamp position",
-        description="position of lamp",
-        default=(0, 0, 0),
-        subtype='TRANSLATION',
-    )
-
-    color: bpy.props.FloatVectorProperty(
-        name="Color",
-        description="light color",
-        subtype='COLOR_GAMMA',
-        size=4,
-        default=(1, 1, 1, 1),
-        min=0,
-        max=1,
-    )
-
-    tracked_to_empty: bpy.props.BoolProperty(
-        name="Track to emtpy",
-        description="will track to empty instead of active object",
-        default=False,
-    )
-
-    empty_lamp_position: bpy.props.FloatVectorProperty(
-        name="empty position",
-        description="position of tracked object",
-        default=(0, 0, 0),
-        subtype='TRANSLATION',
-    )
-
-    # Checking if it is possible to perform operator
-    @classmethod
-    def poll(cls, context):
-        objs = context.selected_objects
-        if len(objs) != 0:
-            current_mode = bpy.context.object.mode
-            return context.area.type == 'VIEW_3D' and current_mode == 'OBJECT'
-        else:
-            return False
 
     def execute(self, context):
-
-        # Material creation
-        material_light = bpy.data.materials.new(name="Light")
-        material_light.use_nodes = True
-
-        # Define link
-        link = material_light.node_tree.links.new
-
-        # Material modification
-        principled_node = material_light.node_tree.nodes['Principled BSDF']
-        material_light.node_tree.nodes.remove(principled_node)
-        emission_node = material_light.node_tree.nodes.new('ShaderNodeEmission')
-        emission_node.location = (-150, 0)
-        emission_node.inputs[1].default_value = self.light_intensity
-        emission_node.inputs[0].default_value = self.color
-        output_node = material_light.node_tree.nodes["Material Output"]
-        output_node.location = (0, 0)
-        link(emission_node.outputs[0], output_node.inputs[0])
-
-        # Plane creation
-        tracked_obj = bpy.context.active_object
-        bpy.ops.mesh.primitive_plane_add(
-            size=self.scale,
-            location=self.position
-        )
-        bpy.context.active_object.name = 'POG_plane_lamp'
-        # Adds material to plane
-        bpy.context.object.active_material = material_light
-
-        # Constraint creation
-        o = bpy.context.object
-        constraint = o.constraints.new('TRACK_TO')
-
-        # Constraint properties
-        constraint.show_expanded = True
-        constraint.mute = False
-        constraint.track_axis = 'TRACK_Z'
-        constraint.name = 'POG constraint'
-        # Get lamp 
-        ob = bpy.context.active_object
-
-        # Deciding tracking target
-        if self.tracked_to_empty:
-            bpy.ops.object.empty_add(type='PLAIN_AXES', location=self.empty_lamp_position)
-            constraint.target = bpy.context.active_object
-            bpy.context.active_object.name = 'POG_lamp.target'
-            bpy.context.active_object.select_set(False)
-            ob.select_set(True)
-        else:
-            constraint.target = tracked_obj
+        self.create_material(context)
         return {'FINISHED'}
+
+    def create_material(self, context):
+        # Get the active object
+        obj = context.active_object
+        if obj is not None and obj.type == 'MESH':
+            # Set the scale parameter for the checker texture
+            mat = bpy.data.materials.new(name="CheckerMaterial")
+            mat.use_nodes = True
+            nodes = mat.node_tree.nodes
+            principled_node = mat.node_tree.nodes.get('Principled BSDF')
+            
+            link = mat.node_tree.links.new
+            
+            # Create nodes for checker texture
+            tex_coord_node = nodes.new(type='ShaderNodeTexCoord')
+            checker_node = nodes.new(type='ShaderNodeTexChecker')
+            
+            scale_node = nodes.new(type='ShaderNodeValue')
+            
+            scale_node.outputs["Value"].default_value = self.scale
+
+
+            checker_node.location = (-500, 0)
+            scale_node.location = (-800, -300)
+            tex_coord_node.location = (-800, 0)
+            # Link nodes
+            link(checker_node.outputs[0], principled_node.inputs[0])
+            link(tex_coord_node.outputs['UV'], checker_node.inputs['Vector'])
+            link(scale_node.outputs['Value'], checker_node.inputs['Scale'])
+
+            # Assign the material to the active object
+            obj.active_material = mat
+        else:
+            self.report({'ERROR'}, "Please select an active mesh object.")
+
 
 
 # ADD TRACKED LAMP OPERATOR
@@ -406,13 +344,6 @@ def menu_func_origin(self, context):
     self.layout.operator(MESH_OT_set_origin_selection.bl_idname, icon='OBJECT_ORIGIN')
 
 
-# Adds add lamp plane function to F3 search
-
-
-def menu_func_lamp_plane(self, context):
-    self.layout.operator(MESH_OT_add_tracked_lamp_plane.bl_idname, icon='LIGHT')
-
-
 # Adds add lamp function to F3 search
 
 
@@ -424,6 +355,9 @@ def menu_func_vertex(self, context):
 
 def menu_func_vertex_dec(self, context):
     self.layout.operator(MESH_OT_decrement_vertex_color_hue.bl_idname, icon='TRIA_DOWN')
+    
+def menu_func_add_checker_mat(self, context):
+    self.layout.operator(OBJECT_OT_add_checker_material.bl_idname, icon='MATERIAL')
 
 # --------------------------------------------------------------------------------------------------------------------#
 # Registration
@@ -435,21 +369,19 @@ def register():
 
     # operators
     bpy.utils.register_class(MESH_OT_set_origin_selection)
-    bpy.utils.register_class(MESH_OT_add_tracked_lamp_plane)
     bpy.utils.register_class(MESH_OT_add_tracked_lamp)
     bpy.utils.register_class(MESH_OT_increment_vertex_color_hue)
     bpy.utils.register_class(MESH_OT_decrement_vertex_color_hue)
+    bpy.utils.register_class(OBJECT_OT_add_checker_material)
 
     # F3 menu
     bpy.types.VIEW3D_MT_edit_mesh.append(menu_func_origin)
-    bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.append(menu_func_lamp)
     bpy.types.VIEW3D_MT_paint_vertex.append(menu_func_vertex)
     bpy.types.VIEW3D_MT_paint_vertex.append(menu_func_vertex_dec)
-
+    bpy.types.VIEW3D_MT_object.append(menu_func_add_checker_mat)
 
     print("I4C jsou borci")
-
 
 def unregister():
     # UI
@@ -457,15 +389,15 @@ def unregister():
 
     # Operators
     bpy.utils.unregister_class(MESH_OT_set_origin_selection)
-    bpy.utils.unregister_class(MESH_OT_add_tracked_lamp_plane)
     bpy.utils.unregister_class(MESH_OT_add_tracked_lamp)
     bpy.utils.unregister_class(MESH_OT_increment_vertex_color_hue)
     bpy.utils.unregister_class(MESH_OT_decrement_vertex_color_hue)
+    bpy.utils.unregister_class(OBJECT_OT_add_checker_material)
+
     # F3 menu
     bpy.types.VIEW3D_MT_edit_mesh.remove(menu_func_origin)
-    bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp_plane)
     bpy.types.VIEW3D_MT_light_add.remove(menu_func_lamp)
     bpy.types.VIEW3D_MT_paint_vertex.remove(menu_func_vertex)
     bpy.types.VIEW3D_MT_paint_vertex.remove(menu_func_vertex_dec)
-
+    bpy.types.VIEW3D_MT_object.remove(menu_func_add_checker_mat)
     print("naschle")

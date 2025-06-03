@@ -37,10 +37,6 @@ bl_info = {
 # -----------------------------------------------------------------------------------------------------------------------#
 
 
-def menu_func(self, context):
-    self.layout.operator(mesh.set_origin_to_selection)
-    self.layout.operator(mesh.add_tracked_lamp_plane)
-
 
 class VIEW3D_PT_POG(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
@@ -53,24 +49,7 @@ class VIEW3D_PT_POG(bpy.types.Panel):
         col = self.layout.column(align=True, )
         col.label(text="Origin:")
         col.operator('mesh.set_origin_to_selection', icon='OBJECT_ORIGIN')
-        # Adding lamp to active menu
-        col = self.layout.column(align=True, )
-        col.label(text="Add lamp to active object:", icon='PIVOT_ACTIVE')
 
-        props = col.operator('mesh.add_tracked_lamp_plane', text="Add tracked plane lamp", icon='LIGHT')
-        props.tracked_to_empty = False
-
-        props = col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
-        props.tracked_to_empty = False
-        # Adding lamp to empty menu
-        col = self.layout.column(align=True, )
-        col.label(text="Add lamp to empty:", icon='EMPTY_AXIS')
-
-        props = col.operator('mesh.add_tracked_lamp_plane', text="Add tracked plane lamp", icon='LIGHT')
-        props.tracked_to_empty = True
-
-        props = col.operator('mesh.add_tracked_lamp', text="Add tracked lamp", icon='CON_TRACKTO')
-        props.tracked_to_empty = True
         
 
 # Operators
@@ -100,9 +79,7 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
         # Set origin
         bpy.ops.view3d.snap_cursor_to_selected()
         bpy.ops.object.mode_set(mode='OBJECT')
-        # Tohle je nějaké pohlupave
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
-        # Tohle je nějaké pohlupave
         bpy.ops.object.mode_set(mode='EDIT')
         # Set 3D cursor back to last position
         bpy.context.scene.cursor.location = original_cursor_location
@@ -111,70 +88,47 @@ class MESH_OT_set_origin_selection(bpy.types.Operator):
 # INCREMENT HUE VERTEX COLOR
 # -----------------------------------------------------------------------------------------------------------------------#
 
-def increase_vertex_paint_hue(x):
+def increase_vertex_paint_hue(amount):
+    vpaint = bpy.context.tool_settings.vertex_paint
+    color = list(vpaint.brush.color)
+    r, g, b = color[:3]
 
-    # Get the active object (must be in vertex paint mode)
-    obj = bpy.context.active_object
+    # Check if the color is black or white
+    if (r, g, b) == (0.0, 0.0, 0.0) or (r, g, b) == (1.0, 1.0, 1.0):
+        vpaint.brush.color = (1.0, 0.0, 0.0)
+        return
 
-    if obj is not None and obj.type == 'MESH' and obj.mode == 'VERTEX_PAINT':
-        brush = bpy.data.brushes["Draw"]
-        
-
-
-        existing_color = brush.color
-        if existing_color[0] == existing_color[1] and existing_color[1] == existing_color[2] and existing_color[0] == existing_color[2]:
-             brush.color = [1.0,0.0,0.0]
-             return
-        existing_color = [c / 255.0 for c in existing_color]
-        hsv = colorsys.rgb_to_hsv(existing_color[0], existing_color[1], existing_color[2])
-        new_hue = (hsv[0] + x) % 1.0
-        
-        new_rgb = colorsys.hsv_to_rgb(new_hue, hsv[1], hsv[2])
-        
-        new_color = [c * 255.0 for c in new_rgb]
-        
-        brush.color = new_color
-
+    # Convert RGB to HSV, increase hue, convert back
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    h = (h + amount) % 1.0
+    r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v)
+    vpaint.brush.color = (r2, g2, b2)
 
 
 class MESH_OT_increment_vertex_color_hue(bpy.types.Operator):
-    """increment hue of vertex color"""
+    """Increment hue of vertex color"""
     bl_idname = 'mesh.increment_vertex_color_hue'
     bl_label = "Increment vertex color hue"
-    bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED', }
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        objs = context.selected_objects
-        if len(objs) != 0:
-            current_mode = bpy.context.object.mode
-            return context.area.type == 'VIEW_3D' and current_mode == 'VERTEX_PAINT'
-        else:
-            return False
+        return context.mode == 'PAINT_VERTEX' and context.object is not None and context.object.type == 'MESH'
 
     def execute(self, context):
         increase_vertex_paint_hue(0.05)
         return {'FINISHED'}
 
 
-
-
-
-
 class MESH_OT_decrement_vertex_color_hue(bpy.types.Operator):
     """Decrement hue of vertex color"""
     bl_idname = 'mesh.decrement_vertex_color_hue'
     bl_label = "Decrement vertex color hue"
-    bl_options = {'REGISTER', 'UNDO', 'UNDO_GROUPED', }
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        objs = context.selected_objects
-        if len(objs) != 0:
-            current_mode = bpy.context.object.mode
-            return context.area.type == 'VIEW_3D' and current_mode == 'VERTEX_PAINT'
-        else:
-            return False
+        return context.mode == 'PAINT_VERTEX' and context.object is not None and context.object.type == 'MESH'
 
     def execute(self, context):
         increase_vertex_paint_hue(-0.05)
@@ -380,8 +334,6 @@ def register():
     bpy.types.VIEW3D_MT_paint_vertex.append(menu_func_vertex)
     bpy.types.VIEW3D_MT_paint_vertex.append(menu_func_vertex_dec)
     bpy.types.VIEW3D_MT_object.append(menu_func_add_checker_mat)
-
-    print("I4C jsou borci")
 
 def unregister():
     # UI
